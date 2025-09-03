@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mi Panel - Universidad César Vallejo</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <!-- Agrega el favicon -->
+  <link rel="icon" type="image/png" href="UCV.png.png">
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="perfil-nombre" id="nombre-usuario" style="cursor:pointer;">Perfil</div>
+      <button onclick="mostrarSeccionCursos()">Cursos</button>
+      <button onclick="mostrarNotas()">Notas</button>
+      <button>Mensajes</button>
+      <button onclick="cerrarSesion()">Cerrar sesión</button>
+    </aside>
+    <main class="contenido" id="main-contenido">
+      <!-- El contenido se llenará por JS -->
+    </main>
+
+<script>
+const nombreGuardado = localStorage.getItem("usuarioNombre");
+
+// --- Limpieza global de temporizador de curso ---
+function limpiarTimerCurso() {
+  if (window.timerBarInterval) {
+    clearInterval(window.timerBarInterval);
+    window.timerBarInterval = null;
+  }
+}
+
+// --- Modifica navegación para limpiar temporizador ---
+function mostrarSeccionCursos() {
+  limpiarTimerCurso();
+  const main = document.getElementById("main-contenido");
+  main.innerHTML = `
+    <div class="encabezado-panel">
+      <h1>Bienvenido a tu panel</h1>
+      <img src="UCV.png.png" alt="Logo UCV" class="logo-ucv" style="border-radius:0;">
+    </div>
+    <p class="mensaje-inicio">
+      "En la Universidad César Vallejo, cada clase no solo forma profesionales, sino también seres humanos capaces de <br>
+      transformar su realidad. Nuestras plataformas educativas están diseñadas para que aprendas a tu ritmo,<br>
+      desarrolles tu potencial y te superes cada día. Porque cuando estudias con pasión y constancia,<br>
+      no solo cambias tu futuro: te cambias a ti mismo."<br><br>
+      #SoyVallejiano #TransformaTuVida #AprenderParaCrecer
+    </p>
+    <div class="dashboard-section">
+      <div class="dashboard-title">Gestión de Cursos</div>
+      <div class="dashboard-grid">
+        <button class="dashboard-card" onclick="mostrarCrearCurso()">
+          CREAR CURSO
+        </button>
+        <button class="dashboard-card" onclick="mostrarNotas()">
+          VER NOTAS
+        </button>
+      </div>
+    </div>
+    <div class="dashboard-section lista-cursos">
+      <div class="dashboard-title" style="font-size:1.5rem;">Cursos creados</div>
+      <ul id="cursos-guardados"></ul>
+    </div>
+  `;
+  mostrarCursosGuardados();
+}
+
+// Nuevo: muestra el formulario de crear curso en un "modal" visual (pero sigue siendo inline)
+function mostrarCrearCurso() {
+  const main = document.getElementById("main-contenido");
+  main.innerHTML = `
+    <div class="encabezado-panel">
+      <h1>Bienvenido a tu panel</h1>
+      <img src="EIJG.png" alt="Logo IEJG" class="logo-ucv" style="border-radius:0;">
+    </div>
+    <div class="dashboard-title">Crear nuevo curso</div>
+    <div class="crear-curso">
+      <input type="text" id="nombre-curso" placeholder="Nombre del curso" />
+      <input type="number" id="nota-minima" placeholder="Nota mínima requerida (%)" min="0" max="100" required />
+      <input type="number" id="duracion-min" placeholder="Duración (minutos)" min="1" style="margin-bottom:10px;" />
+      <div id="preguntas"></div>
+      <div class="panel-tipos-pregunta" style="margin-top:20px;">
+        <h3>Agregar pregunta:</h3>
+        <button onclick="agregarPregunta('opcion-multiple')">Opción múltiple</button>
+        <button onclick="agregarPregunta('imagen')">Imagen</button>
+        <button onclick="agregarPregunta('escrita')">Respuesta escrita</button>
+      </div>
+      <button onclick="guardarCurso()" style="margin-top:20px;">Guardar Curso</button>
+      <button onclick="mostrarSeccionCursos()" style="margin-top:10px;background:#b00020;">Cancelar</button>
+    </div>
+  `;
+}
+
+function agregarPregunta(tipo, datos = null) {
+  const preguntasDiv = document.getElementById("preguntas");
+  const index = preguntasDiv.children.length;
+  let html = `<div class="pregunta-bloque" data-tipo="${tipo}" style="border:1px solid #ccc; padding:12px; margin-bottom:12px;">`;
+
+  html += `<input type="text" placeholder="Pregunta" class="pregunta" value="${datos?.texto || ''}" />`;
+  html += `<input type="number" placeholder="Puntos" class="puntos" min="1" value="${datos?.puntos || ''}" />`;
+
+  if (tipo === "opcion-multiple") {
+    html += `
+      <div class="opciones">
+        <input type="text" placeholder="Opción 1" class="opcion" value="${datos?.opciones?.[0] || ''}" />
+        <input type="radio" name="correcta-${index}" value="0" ${datos?.correcta === 0 ? "checked" : ""}/> Correcta
+        <br />
+        <input type="text" placeholder="Opción 2" class="opcion" value="${datos?.opciones?.[1] || ''}" />
+        <input type="radio" name="correcta-${index}" value="1" ${datos?.correcta === 1 ? "checked" : ""}/> Correcta
+        <br />
+        <input type="text" placeholder="Opción 3" class="opcion" value="${datos?.opciones?.[2] || ''}" />
+        <input type="radio" name="correcta-${index}" value="2" ${datos?.correcta === 2 ? "checked" : ""}/> Correcta
+      </div>
+    `;
+  } else if (tipo === "imagen") {
+    html += `
+      <div class="opciones-imagenes" style="display:flex; gap:16px; margin-top:10px;">
+        ${[0,1,2].map(j => `
+          <div class="opcion-img-container" style="display:flex; flex-direction:column; align-items:center;">
+            <label style="cursor:pointer;">
+              <input type="file" accept="image/*" class="opcion-img-input" data-index="${index}" data-opcion="${j}" style="display:none" />
+              <img src="${datos?.opciones?.[j] || ''}" alt="Opción ${j+1}" class="opcion-img-preview" style="width:80px; height:80px; object-fit:cover; border:1px solid #ccc; margin-bottom:6px;"/>
+            </label>
+            <div style="display:flex; align-items:center;">
+              <span style="margin-right:8px;">Opción ${j+1}</span>
+              <input type="radio" name="correcta-${index}" value="${j}" class="opcion-radio" style="width:20px; height:20px; accent-color:${datos?.correcta === j ? 'green' : 'gray'}; border-radius:4px; border:2px solid #888;" ${datos?.correcta === j ? "checked" : ""}/>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else if (tipo === "escrita") {
+    html += `<textarea placeholder="Respuesta escrita esperada" class="respuesta-escrita">${datos?.respuestaEscrita || ''}</textarea>`;
+  }
+
+  html += `<button onclick="this.parentElement.remove()" style="margin-top:10px;">Eliminar pregunta</button>`;
+  html += `</div>`;
+
+  preguntasDiv.insertAdjacentHTML('beforeend', html);
+
+  // Si es de imagen, activa la carga y preview
+  if (tipo === "imagen") {
+    const bloque = preguntasDiv.lastElementChild;
+    bloque.querySelectorAll('.opcion-img-input').forEach(input => {
+      input.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(ev) {
+            input.parentElement.querySelector('.opcion-img-preview').src = ev.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    });
+    // Color verde al marcar correcta
+    bloque.querySelectorAll('.opcion-radio').forEach(radio => {
+      radio.addEventListener('change', function() {
+        bloque.querySelectorAll('.opcion-radio').forEach(r => {
+          r.style.accentColor = "gray";
+          r.parentElement.style.background = "";
+        });
+        radio.style.accentColor = "green";
+        radio.parentElement.style.background = "#e0ffe0";
+      });
+      if (radio.checked) {
+        radio.style.accentColor = "green";
+        radio.parentElement.style.background = "#e0ffe0";
+      }
+    });
+  }
+}
+
+function guardarCurso() {
+  const nombre = document.getElementById("nombre-curso").value.trim();
+  if (!nombre) return alert("Nombre del curso requerido");
+  const notaMinima = parseInt(document.getElementById("nota-minima").value) || 50;
+  const duracion = parseInt(document.getElementById("duracion-min").value) || 0;
+
+  const preguntas = [];
+  const bloques = document.querySelectorAll(".pregunta-bloque");
+
+  bloques.forEach((bloque, i) => {
+    const tipo = bloque.getAttribute("data-tipo");
+    const texto = bloque.querySelector(".pregunta").value.trim();
+    const puntos = parseInt(bloque.querySelector(".puntos").value);
+
+    if (tipo === "opcion-multiple") {
+      const opciones = [...bloque.querySelectorAll(".opcion")].map(op => op.value.trim());
+      const correcta = bloque.querySelector(`input[name="correcta-${i}"]:checked`);
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        opciones,
+        correcta: correcta ? parseInt(correcta.value) : null
+      });
+    } else if (tipo === "imagen") {
+      const opciones = [...bloque.querySelectorAll(".opcion-img-preview")].map(img => img.src || "");
+      const correcta = bloque.querySelector(`input[name="correcta-${i}"]:checked`);
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        opciones,
+        correcta: correcta ? parseInt(correcta.value) : null
+      });
+    } else if (tipo === "escrita") {
+      const respuestaEscrita = bloque.querySelector(".respuesta-escrita").value.trim();
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        respuestaEscrita
+      });
+    }
+  });
+
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  cursos.push({ nombre, preguntas, notaMinima, duracion });
+  localStorage.setItem("cursos", JSON.stringify(cursos));
+  mostrarSeccionCursos();
+}
+
+function mostrarCursosGuardados() {
+  const lista = document.getElementById("cursos-guardados");
+  lista.innerHTML = "";
+
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  if (cursos.length === 0) return (lista.innerHTML = "<li>No hay cursos aún.</li>");
+
+  cursos.forEach((curso, index) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <strong>${curso.nombre}</strong>
+      <div style="display:flex; gap:8px;">
+        <button onclick="resolverCurso(${index})">Resolver</button>
+        <button onclick="editarCurso(${index})" style="background-color: #1976d2; color: white;">Editar</button>
+        <button style="background-color: #b00020; color: white;" onclick="eliminarCurso(${index})">Eliminar</button>
+      </div>
+    `;
+    lista.appendChild(li);
+  });
+}
+
+function editarCurso(index) {
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  const curso = cursos[index];
+  const main = document.getElementById("main-contenido");
+
+  let contenido = `
+    <div class="encabezado-panel">
+      <h1>Bienvenido a tu panel</h1>
+      <img src="EIJG.png" alt="Logo IEJG" class="logo-ucv" style="border-radius:0;">
+    </div>
+    <h2>Editar Curso</h2>
+    <div class="crear-curso">
+      <input type="text" id="nombre-curso" placeholder="Nombre del curso" value="${curso.nombre}" />
+      <input type="number" id="nota-minima" placeholder="Nota mínima requerida (%)" min="0" max="100" value="${curso.notaMinima}" required />
+      <input type="number" id="duracion-min" placeholder="Duración (minutos)" min="1" value="${curso.duracion || ''}" style="margin-bottom:10px;" />
+      <div id="preguntas"></div>
+      <div class="panel-tipos-pregunta" style="margin-top:20px;">
+        <h3>Agregar pregunta:</h3>
+        <button onclick="agregarPregunta('opcion-multiple')">Opción múltiple</button>
+        <button onclick="agregarPregunta('imagen')">Imagen</button>
+        <button onclick="agregarPregunta('escrita')">Respuesta escrita</button>
+      </div>
+      <button onclick="guardarEdicionCurso(${index})">Guardar Cambios</button>
+      <button onclick="mostrarSeccionCursos()">Cancelar</button>
+    </div>
+  `;
+  main.innerHTML = contenido;
+
+  // Cargar preguntas existentes
+  const preguntasDiv = document.getElementById("preguntas");
+  curso.preguntas.forEach((preg) => {
+    agregarPregunta(preg.tipo, preg);
+  });
+}
+
+function guardarEdicionCurso(index) {
+  const nombre = document.getElementById("nombre-curso").value.trim();
+  if (!nombre) return alert("Nombre del curso requerido");
+  const notaMinima = parseInt(document.getElementById("nota-minima").value) || 50;
+  const duracion = parseInt(document.getElementById("duracion-min").value) || 0;
+
+  const preguntas = [];
+  const bloques = document.querySelectorAll(".pregunta-bloque");
+
+  bloques.forEach((bloque, i) => {
+    const tipo = bloque.getAttribute("data-tipo");
+    const texto = bloque.querySelector(".pregunta").value.trim();
+    const puntos = parseInt(bloque.querySelector(".puntos").value);
+
+    if (tipo === "opcion-multiple") {
+      const opciones = [...bloque.querySelectorAll(".opcion")].map(op => op.value.trim());
+      const correcta = bloque.querySelector(`input[name="correcta-${i}"]:checked`);
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        opciones,
+        correcta: correcta ? parseInt(correcta.value) : null
+      });
+    } else if (tipo === "imagen") {
+      const opciones = [...bloque.querySelectorAll(".opcion-img-preview")].map(img => img.src || "");
+      const correcta = bloque.querySelector(`input[name="correcta-${i}"]:checked`);
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        opciones,
+        correcta: correcta ? parseInt(correcta.value) : null
+      });
+    } else if (tipo === "escrita") {
+      const respuestaEscrita = bloque.querySelector(".respuesta-escrita").value.trim();
+      preguntas.push({
+        tipo,
+        texto,
+        puntos: isNaN(puntos) ? 1 : puntos,
+        respuestaEscrita
+      });
+    }
+  });
+
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  cursos[index] = { nombre, preguntas, notaMinima, duracion };
+  localStorage.setItem("cursos", JSON.stringify(cursos));
+  mostrarSeccionCursos();
+}
+
+function eliminarCurso(index) {
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  const cursoEliminado = cursos[index].nombre;
+
+  cursos.splice(index, 1);
+  localStorage.setItem("cursos", JSON.stringify(cursos));
+
+  // También eliminar nota asociada al curso
+  let notas = JSON.parse(localStorage.getItem("notas")) || [];
+  notas = notas.filter(nota => nota.curso !== cursoEliminado);
+  localStorage.setItem("notas", JSON.stringify(notas));
+
+  mostrarSeccionCursos(); // Refrescar vista
+}
+
+let timerInterval = null;
+
+// ...reemplaza la función resolverCurso y agrega la función evaluarRespuestasRapido...
+
+function resolverCurso(index) {
+  limpiarTimerCurso();
+  const cursos = JSON.parse(localStorage.getItem("cursos")) || [];
+  const curso = cursos[index];
+  const main = document.getElementById("main-contenido");
+  let respuestas = [];
+  let preguntaActual = 0;
+
+  let tiempoTotal = curso.duracion && curso.duracion > 0 ? curso.duracion * 60 : curso.preguntas.length * 30;
+  let usarModoMinutos = curso.duracion && curso.duracion > 0;
+  window.timerBarInterval = null;
+
+  let tiempoInicioKey = "curso_tiempo_inicio_" + curso.nombre;
+  let tiempoInicio = null;
+  if (usarModoMinutos) {
+    const guardado = localStorage.getItem(tiempoInicioKey);
+    if (guardado) {
+      tiempoInicio = parseInt(guardado, 10);
+    } else {
+      tiempoInicio = Math.floor(Date.now() / 1000);
+      localStorage.setItem(tiempoInicioKey, tiempoInicio);
+    }
+  }
+  let tiempoRestanteGlobal = usarModoMinutos
+    ? Math.max(0, tiempoTotal - (Math.floor(Date.now() / 1000) - tiempoInicio))
+    : Math.floor(tiempoTotal / curso.preguntas.length);
+
+  function mostrarPregunta(i) {
+    const preg = curso.preguntas[i];
+    let contenido = `
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 class="pregunta-titulo" style="color:#000;">${preg.texto}</h2>
+      </div>
+      <div class="timer-bar-container">
+        <span class="timer-text" id="timer-text">0:00</span>
+        <div class="timer-bar-bg">
+          <div class="timer-bar" id="timer-bar"></div>
+        </div>
+      </div>
+      <div class="opciones-rectangulos">
+    `;
+
+    if (preg.tipo === "opcion-multiple" && preg.opciones && preg.opciones.length > 0) {
+      preg.opciones.forEach((opc, j) => {
+        contenido += `
+          <div class="opcion-rect" data-valor="${j}" tabindex="0">${opc}</div>
+        `;
+      });
+    } else if (preg.tipo === "imagen" && preg.opciones && preg.opciones.length > 0) {
+      preg.opciones.forEach((opc, j) => {
+        contenido += `
+          <div class="opcion-rect" data-valor="${j}" tabindex="0">
+            <img src="${opc}" alt="Opción ${j+1}" style="width:120px; height:120px; object-fit:cover; margin-top:8px;"/>
+          </div>
+        `;
+      });
+    } else if (preg.tipo === "escrita") {
+      contenido += `<textarea class="opcion-rect" id="respuesta-escrita" placeholder="Tu respuesta..." style="height:80px;"></textarea>`;
+    }
+
+    contenido += `</div>
+      <button id="cancelar-curso-btn" class="cancelar-curso-btn" type="button">Cancelar</button>
+    `;
+    main.innerHTML = `<div class="pregunta-unica" style="position:relative;">${contenido}</div>`;
+
+    limpiarTimerCurso();
+    let timerStarted = false;
+
+    function startTimer() {
+      if (timerStarted) return;
+      timerStarted = true;
+      if (usarModoMinutos) {
+        window.timerBarInterval = setInterval(() => {
+          tiempoRestanteGlobal = Math.max(0, tiempoTotal - (Math.floor(Date.now() / 1000) - tiempoInicio));
+          actualizarBarraTiempo();
+          if (tiempoRestanteGlobal <= 0) {
+            limpiarTimerCurso();
+            localStorage.removeItem(tiempoInicioKey);
+            guardarRespuestaYContinuar(null, true);
+          }
+        }, 1000);
+      } else {
+        window.timerBarInterval = setInterval(() => {
+          tiempoRestanteGlobal--;
+          actualizarBarraTiempo();
+          if (tiempoRestanteGlobal <= 0) {
+            limpiarTimerCurso();
+            guardarRespuestaYContinuar(null);
+          }
+        }, 1000);
+      }
+    }
+
+    startTimer();
+    actualizarBarraTiempo();
+
+    if (preg.tipo === "opcion-multiple" || preg.tipo === "imagen") {
+      document.querySelectorAll('.opcion-rect').forEach(div => {
+        div.onclick = () => {
+          const seleccion = parseInt(div.dataset.valor);
+          const correcta = preg.correcta;
+          document.querySelectorAll('.opcion-rect').forEach((d, idx) => {
+            d.classList.remove('opcion-correcta', 'opcion-incorrecta');
+            if (idx === seleccion) {
+              if (seleccion === correcta) {
+                d.classList.add('opcion-correcta');
+              } else {
+                d.classList.add('opcion-incorrecta');
+              }
+            }
+          });
+          setTimeout(() => guardarRespuestaYContinuar(seleccion), 500);
+        };
+        div.onkeydown = (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            const seleccion = parseInt(div.dataset.valor);
+            const correcta = preg.correcta;
+            document.querySelectorAll('.opcion-rect').forEach((d, idx) => {
+              d.classList.remove('opcion-correcta', 'opcion-incorrecta');
+              if (idx === seleccion) {
+                if (seleccion === correcta) {
+                  d.classList.add('opcion-correcta');
+                } else {
+                  d.classList.add('opcion-incorrecta');
+                }
+              }
+            });
+            setTimeout(() => guardarRespuestaYContinuar(seleccion), 500);
+          }
+        };
+      });
+    } else if (preg.tipo === "escrita") {
+      document.getElementById('respuesta-escrita').onkeydown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          guardarRespuestaYContinuar(e.target.value.trim());
+        }
+      };
+    }
+
+    document.getElementById('cancelar-curso-btn').onclick = function() {
+      limpiarTimerCurso();
+      if (usarModoMinutos) localStorage.removeItem(tiempoInicioKey);
+      mostrarSeccionCursos();
+    };
+  }
+
+  function actualizarBarraTiempo() {
+    let min, sec, percent;
+    if (usarModoMinutos) {
+      min = Math.floor(tiempoRestanteGlobal / 60);
+      sec = tiempoRestanteGlobal % 60;
+      percent = (tiempoRestanteGlobal / tiempoTotal) * 100;
+    } else {
+      min = Math.floor(tiempoRestanteGlobal / 60);
+      sec = tiempoRestanteGlobal % 60;
+      percent = (tiempoRestanteGlobal / Math.floor(tiempoTotal / curso.preguntas.length)) * 100;
+    }
+    const timerText = document.getElementById("timer-text");
+    if (timerText) timerText.textContent = `${min}:${sec.toString().padStart(2, "0")}`;
+    const bar = document.getElementById("timer-bar");
+    if (bar) {
+      bar.style.width = percent + "%";
+      bar.style.right = "0";
+      bar.style.left = "auto";
+    }
+  }
+
+  function guardarRespuestaYContinuar(valor, forzarTerminar = false) {
+    const preg = curso.preguntas[preguntaActual];
+    let correcta = false;
+    if ((preg.tipo === "opcion-multiple" || preg.tipo === "imagen") && preg.correcta !== null && valor !== null && valor === preg.correcta) {
+      correcta = true;
+    }
+    if (preg.tipo === "escrita" && preg.respuestaEscrita && valor && valor.toLowerCase() === preg.respuestaEscrita.toLowerCase()) {
+      correcta = true;
+    }
+
+    respuestas[preguntaActual] = valor;
+
+    preguntaActual++;
+
+    if (usarModoMinutos && (forzarTerminar || tiempoRestanteGlobal <= 0 || preguntaActual >= curso.preguntas.length)) {
+      limpiarTimerCurso();
+      localStorage.removeItem(tiempoInicioKey);
+      evaluarRespuestasRapido(curso, respuestas);
+    } else if (!usarModoMinutos && preguntaActual < curso.preguntas.length) {
+      mostrarPregunta(preguntaActual);
+    } else if (!usarModoMinutos && preguntaActual >= curso.preguntas.length) {
+      limpiarTimerCurso();
+      evaluarRespuestasRapido(curso, respuestas);
+    } else if (usarModoMinutos && preguntaActual < curso.preguntas.length) {
+      mostrarPregunta(preguntaActual);
+    }
+  }
+
+  mostrarPregunta(0);
+}
+
+function evaluarRespuestasRapido(curso, respuestas) {
+  let total = 0;
+  let obtenidos = 0;
+
+  curso.preguntas.forEach((preg, i) => {
+    total += preg.puntos;
+    const resp = respuestas[i];
+    if ((preg.tipo === "opcion-multiple" || preg.tipo === "imagen") && preg.correcta !== null && resp !== null && resp === preg.correcta) {
+      obtenidos += preg.puntos;
+    }
+    if (preg.tipo === "escrita" && preg.respuestaEscrita && resp && resp.toLowerCase() === preg.respuestaEscrita.toLowerCase()) {
+      obtenidos += preg.puntos;
+    }
+  });
+
+  const porcentaje = obtenidos / total;
+  let color = "gray";
+  let descripcion = "";
+
+  // Rango de colores:
+  // >= 90%: verde
+  // >= 75%: verde claro
+  // >= 60%: amarillo
+  // >= 40%: naranja
+  // < 40%: rojo
+  if (porcentaje >= 0.9) {
+    color = "verde";
+    descripcion = "Excelente";
+  } else if (porcentaje >= 0.75) {
+    color = "verdeclaro";
+    descripcion = "Muy bueno";
+  } else if (porcentaje >= 0.6) {
+    color = "amarillo";
+    descripcion = "Regular";
+  } else if (porcentaje >= 0.4) {
+    color = "naranja";
+    descripcion = "Bajo";
+  } else {
+    color = "rojo";
+    descripcion = "Muy bajo";
+  }
+
+  const notas = JSON.parse(localStorage.getItem("notas")) || [];
+  notas.push({
+    curso: curso.nombre,
+    nota: Math.round(porcentaje * 100),
+    color,
+    descripcion,
+    puntosObtenidos: obtenidos,
+    puntosTotales: total
+  });
+  localStorage.setItem("notas", JSON.stringify(notas));
+  mostrarNotas();
+}
+// ...resto del código...
+function mostrarNotas() {
+  const main = document.getElementById("main-contenido");
+  const notas = JSON.parse(localStorage.getItem("notas")) || [];
+
+  let html = `<h2>Notas</h2>`;
+
+  if (notas.length === 0) {
+    html += "<p>Aún no tienes notas registradas.</p>";
+  } else {
+    html += `<ul class="notas-lista">`;
+    notas.forEach(nota => {
+      html += `
+        <li class="nota-item" data-color="${nota.color}">
+          <span>
+            ${nota.curso}<br>
+            <small>${nota.puntosObtenidos} / ${nota.puntosTotales} pts (${nota.descripcion})</small>
+          </span>
+          <span class="nota-etiqueta">${nota.nota}%</span>
+        </li>
+      `;
+    });
+    html += "</ul>";
+  }
+
+  main.innerHTML = html;
+}
+
+// Mostrar perfil al hacer click en el nombre
+document.getElementById("nombre-usuario").onclick = mostrarPerfil;
+
+function mostrarPerfil() {
+  const main = document.getElementById("main-contenido");
+  // Obtener nombre y foto de perfil de localStorage
+  const nombre = localStorage.getItem("usuarioNombre") || "NOMBRE NOMBRE NOMBRE";
+  const foto = localStorage.getItem("usuarioFotoPerfil") || "";
+  // Ejemplo de logros, puedes reemplazar por los que desees
+  const logros = JSON.parse(localStorage.getItem("usuarioLogros") || "[]");
+  // Si no hay logros, muestra algunos por defecto
+  const logrosMostrar = logros.length > 0 ? logros : [
+    "LOGRO LOGRO LOGRO",
+    "LOGRO LOGRO LOGRO",
+    "LOGRO LOGRO LOGRO",
+    "LOGRO LOGRO LOGRO"
+  ];
+
+  main.innerHTML = `
+    <div class="perfil-interfaz">
+      <div class="perfil-foto-laurel">
+        <label class="perfil-foto-label">
+          <input type="file" accept="image/*" id="input-foto-perfil" style="display:none">
+          <img src="${foto || 'https://via.placeholder.com/180?text=IMAGEN'}" alt="Imagen de perfil" class="perfil-foto" id="img-foto-perfil">
+        </label>
+        <img src="Laurel.png" alt="Laurel" class="perfil-laurel">
+      </div>
+      <div class="perfil-nombre-grande">${nombre}</div>
+      <div class="perfil-laureles-pagina">
+        <img src="Planta.left.png" alt="Planta izquierdo" class="perfil-laurel-left">
+        <span class="perfil-logros-obtenidos-texto">LOGROS OBTENIDOS</span>
+        <img src="Planta.right.png" alt="Planta derecho" class="perfil-laurel-right">
+      </div>
+      <div class="perfil-logros-contenedor">
+        <div class="perfil-logros-lista">
+          ${logrosMostrar.map(l => `<div class="perfil-logro">${l}</div>`).join("")}
+        </div>
+      </div>
+      <div id="perfil-foto-menu" class="perfil-foto-menu" style="display:none;">
+        <button id="btn-eliminar-foto" class="perfil-foto-menu-eliminar">Eliminar foto</button>
+        <button id="btn-subir-foto" class="perfil-foto-menu-subir">Subir foto</button>
+      </div>
+    </div>
+  `;
+
+  // Evento para cambiar foto de perfil
+  document.getElementById("input-foto-perfil").onchange = function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        document.getElementById("img-foto-perfil").src = ev.target.result;
+        localStorage.setItem("usuarioFotoPerfil", ev.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Mostrar menú al tocar la foto
+  const imgFoto = document.getElementById("img-foto-perfil");
+  const menu = document.getElementById("perfil-foto-menu");
+  imgFoto.onclick = function(e) {
+    e.stopPropagation();
+    menu.style.display = "flex";
+    // Centrar el menú sobre la foto
+    const rect = imgFoto.getBoundingClientRect();
+    menu.style.position = "fixed";
+    menu.style.left = (rect.left + rect.width / 2 - 90) + "px";
+    menu.style.top = (rect.top + rect.height + 10) + "px";
+  };
+  // Ocultar menú al hacer click fuera
+  document.addEventListener("click", function() {
+    menu.style.display = "none";
+  });
+  menu.onclick = function(e) {
+    e.stopPropagation();
+  };
+  // Eliminar foto
+  document.getElementById("btn-eliminar-foto").onclick = function() {
+    localStorage.removeItem("usuarioFotoPerfil");
+    document.getElementById("img-foto-perfil").src = "https://via.placeholder.com/180?text=IMAGEN";
+    menu.style.display = "none";
+  };
+  // Subir foto
+  document.getElementById("btn-subir-foto").onclick = function() {
+    document.getElementById("input-foto-perfil").click();
+    menu.style.display = "none";
+  };
+}
+
+// Agrega la función cerrarSesion para permitir cerrar sesión correctamente
+function cerrarSesion() {
+  localStorage.removeItem("usuarioNombre");
+  // Si tienes otros datos de sesión, puedes limpiarlos aquí también
+  window.location.href = "index.html"; // Redirige al login o página principal
+}
+
+// Mostrar la sección de cursos al cargar la página automáticamente
+window.addEventListener('DOMContentLoaded', mostrarSeccionCursos);
+</script>
+</body>
+</html>
