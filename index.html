@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Universidad César Vallejo - Inicio</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Agrega el favicon -->
+  <link rel="icon" type="image/png" href="UCV.png.png">
+  <style>
+    /* Centrado de formularios */
+    .formulario-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 350px;
+    }
+    .formulario {
+      background: #fff;
+      padding: 32px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .oculto {
+      display: none;
+    }
+    .error {
+      color: red;
+      font-size: 0.9em;
+      margin: 0;
+    }
+    .acciones {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 12px;
+    }
+    .acciones button {
+      padding: 8px 18px;
+      border-radius: 6px;
+      border: none;
+      background: #0056b3;
+      color: #fff;
+      cursor: pointer;
+    }
+    .acciones button:hover {
+      background: #003d80;
+    }
+  </style>
+</head>
+<body>
+  <script src="script.js" defer></script>
+
+  <!-- Franja superior blanca -->
+  <div class="topbar">
+    <div class="logo-titulo">
+      <img src="UCV.png.png" alt="Logo UCV" class="logo">
+      <div class="titulo">Universidad César Vallejo</div>
+    </div>
+    <div class="nav-buttons">
+      <button onclick="mostrarRegistro()">Registrarte</button>
+      <button>Saber Más</button>
+      <button>Plataformas</button>
+      <button>Directivos</button>
+      <button onclick="irADashboard()">Panel</button>
+    </div>
+  </div>
+
+  <!-- Banner azul -->
+  <header>
+    <h1 class="banner-texto">Bienvenidos a la Plataforma Educativa</h1>
+  </header>
+
+  <!-- Contenido -->
+  <section class="contenido">
+    <!-- Video a la izquierda -->
+    <div class="video">
+      <video autoplay muted loop playsinline>
+        <source src="Presentation.mp4.mp4" type="video/mp4">
+      </video>
+    </div>
+
+    <!-- Texto a la derecha -->
+    <div class="texto">
+      <h2>Accede a todos los recursos académicos</h2>
+      <p id="bienvenida-usuario">Gestiona tu aprendizaje desde cualquier lugar y en cualquier momento gracias a nuestra plataforma digital.</p>
+
+      <div class="acciones">
+        <!-- Eliminar botones y formularios de sesión y registro -->
+      </div>
+    </div>
+
+    <!-- Formularios centrados -->
+    <div class="formulario-container">
+      <!-- Formulario de ingreso -->
+      <div id="formulario-ingreso" class="formulario">
+        <input type="email" id="login-correo" placeholder="Correo electrónico">
+        <p id="error-correo" class="error"></p>
+        <input type="password" id="login-password" placeholder="Contraseña">
+        <p id="error-password" class="error"></p>
+        <button onclick="iniciarSesion()">Entrar</button>
+        <div class="acciones">
+          <button onclick="mostrarRegistro()">Registrarte</button>
+        </div>
+      </div>
+      <!-- Formulario de registro -->
+      <div id="formulario-registro" class="formulario oculto">
+        <input type="text" id="registro-nombre" placeholder="Nombre completo">
+        <input type="email" id="registro-correo" placeholder="Correo electrónico">
+        <p id="error-registro-correo" class="error"></p>
+        <input type="password" id="registro-password" placeholder="Crear contraseña">
+        <p id="error-registro-password" class="error"></p>
+        <button onclick="registrar()">Registrarme</button>
+        <div class="acciones">
+          <button onclick="mostrarIngreso()">Volver</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>
+    function mostrarRegistro() {
+      document.getElementById('formulario-ingreso').classList.add('oculto');
+      document.getElementById('formulario-registro').classList.remove('oculto');
+    }
+    function mostrarIngreso() {
+      document.getElementById('formulario-registro').classList.add('oculto');
+      document.getElementById('formulario-ingreso').classList.remove('oculto');
+    }
+    function iniciarSesion() {
+      // Aquí puedes agregar validaciones si lo deseas
+      window.location.href = "dashboard.html";
+    }
+    // ...puedes agregar función registrar aquí...
+  </script>
+</body>
+</html>
